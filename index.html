@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Barcode Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #f4f4f4;
+      font-family: 'PT Sans', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 20px;
+    }
+
+    .barcode-container {
+      background: #fff;
+      padding: 24px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .barcode-container h2 {
+      font-size: 24px;
+      color: #333;
+    }
+
+    .barcode-input, .name-input, .id-input {
+      padding: 12px 16px;
+      width: 100%;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .generate-btn {
+      padding: 12px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .generate-btn:hover {
+      background: #0056b3;
+    }
+
+    .barcode {
+      margin-top: 20px;
+      max-width: 100%;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="barcode-container">
+    <h2>Barcode Generator</h2>
+    <input type="text" placeholder="Enter name" class="name-input" />
+    <input type="text" placeholder="Auto ID" class="id-input" readonly />
+    <input type="text" placeholder="Enter text or number" class="barcode-input" />
+    <button class="generate-btn">Generate Barcode</button>
+    <svg class="barcode"></svg>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js" integrity="sha512-k2wo/BkbloaRU7gc/RkCekHr4IOVe10kYxJ/Q8dRPl7u3YshAQmg3WfZtIcseEk+nGBdK03fHBeLgXTxRmWCLQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    const generateBtn = document.querySelector(".generate-btn");
+    const idInput = document.querySelector(".id-input");
+    const nameInput = document.querySelector(".name-input");
+    const barcodeInput = document.querySelector(".barcode-input");
+
+    const generateBarcode = () => {
+      const name = nameInput.value;
+      const input = barcodeInput.value;
+
+      if (name.trim() === "") {
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops...',
+          text: 'Please enter a name!'
+        });
+        return;
+      }
+
+      if (input.trim() === "") {
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops...',
+          text: 'Please enter a valid text or number to generate a barcode.'
+        });
+        return;
+      }
+
+      const autoID = Date.now();
+      idInput.value = autoID;
+
+      JsBarcode(".barcode", input, {
+        height: 100,
+        displayValue: true,
+      });
+
+      const svgElement = document.querySelector(".barcode");
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svgElement);
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      img.onload = function() {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        const pngDataUrl = canvas.toDataURL('image/png');
+        const base64Image = pngDataUrl.replace(/^data:image\/(png|jpg);base64,/, "");
+
+        google.script.run.withSuccessHandler(() => {
+          Swal.fire({
+            icon: 'success',
+            title: 'Barcode Generated and Saved!',
+            text: 'Your barcode has been generated and saved to the Google Sheet.'
+          });
+        }).saveData(autoID, name, input, base64Image);
+      };
+
+      img.src = 'data:image/svg+xml;base64,' + btoa(svgString);
+    };
+
+    generateBtn.addEventListener("click", generateBarcode);
+  </script>
+</body>
+</html>
